@@ -11,3 +11,5 @@ All endpoints require authentication.
 
 ## Error Handling
 Standard error responses are returned for invalid requests.
+## Authentication
+Updated authentication description.
