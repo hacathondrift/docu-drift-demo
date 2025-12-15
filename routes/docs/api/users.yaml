@@ -3,10 +3,3 @@ paths:
   /users:
     get:
       summary: Get users
-      parameters:
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-          description: Maximum number of users to return
