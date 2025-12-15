@@ -3,7 +3,7 @@ import sys
 import requests
 from openai import OpenAI
 
-# ------------------ CONFIG ------------------
+# ================= CONFIG =================
 GITHUB_API = "https://api.github.com"
 
 OWNER = os.getenv("REPO_OWNER")
@@ -13,14 +13,15 @@ TOKEN = os.getenv("GITHUB_TOKEN")
 SHA = os.getenv("GITHUB_SHA")
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 
-# ------------------ CLIENTS ------------------
+# ================= CLIENTS =================
 client = OpenAI(api_key=OPENAI_KEY)
+
 HEADERS = {
     "Authorization": f"token {TOKEN}",
     "Accept": "application/vnd.github+json"
 }
 
-# ------------------ HELPERS ------------------
+# ================= HELPERS =================
 def get_pr_files():
     url = f"{GITHUB_API}/repos/{OWNER}/{REPO}/pulls/{PR}/files"
     resp = requests.get(url, headers=HEADERS)
@@ -28,6 +29,7 @@ def get_pr_files():
     return resp.json()
 
 def post_review(message):
+    print("📝 Posting PR review comment...")
     url = f"{GITHUB_API}/repos/{OWNER}/{REPO}/pulls/{PR}/reviews"
     requests.post(
         url,
@@ -39,6 +41,7 @@ def post_review(message):
     )
 
 def set_status(state, description):
+    print(f"📌 Setting commit status: {state.upper()} — {description}")
     url = f"{GITHUB_API}/repos/{OWNER}/{REPO}/statuses/{SHA}"
     requests.post(
         url,
@@ -50,15 +53,26 @@ def set_status(state, description):
         }
     )
 
-# ------------------ MAIN LOGIC ------------------
+# ================= MAIN =================
+print("🚀 Starting Docu-Drift Agent")
+print(f"🔍 Repository: {OWNER}/{REPO}")
+print(f"🔍 PR Number: {PR}")
+
 files = get_pr_files()
 changed_files = [f["filename"] for f in files]
+
+print("📂 Changed files:", changed_files)
 
 code_changed = any(f.startswith("routes/") for f in changed_files)
 docs_changed = any(f.startswith("docs/") for f in changed_files)
 
-# ------------------ DRIFT DETECTED ------------------
+print(f"🧠 Code changed: {code_changed}")
+print(f"🧠 Docs changed: {docs_changed}")
+
+# ================= DRIFT DETECTED =================
 if code_changed and not docs_changed:
+    print("❌ Documentation Drift Detected")
+
     ai_response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -89,10 +103,10 @@ if code_changed and not docs_changed:
 
     set_status("failure", "Documentation update required")
 
-    # 🔴 THIS IS WHAT ACTUALLY BLOCKS THE PR
+    print("🚫 Blocking PR — exiting with failure")
     sys.exit(1)
 
-# ------------------ NO DRIFT ------------------
+# ================= NO DRIFT =================
 else:
+    print("✅ No documentation drift detected")
     set_status("success", "Documentation is consistent")
-    print("No documentation drift detected.")
