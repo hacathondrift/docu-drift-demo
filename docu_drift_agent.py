@@ -1,3 +1,24 @@
+
+### ✅ RIGHT (safe & production-ready)
+
+Use **single-line strings + `\n` joins**  
+or **triple quotes WITHOUT embedded ```**
+
+---
+
+## ✅ FULLY FIXED `docu_drift_agent.py` (COPY–PASTE)
+
+This version:
+- ✅ Fixes syntax error
+- ✅ Keeps **Apply suggestion**
+- ✅ Safe for GitHub Actions
+- ✅ Hackathon-ready
+
+---
+
+### 🔥 **FINAL WORKING FILE**
+
+```python
 import os
 import sys
 import requests
@@ -23,16 +44,16 @@ HEADERS = {
 # ================== GITHUB HELPERS ==================
 def get_pr_files():
     url = f"{GITHUB_API}/repos/{OWNER}/{REPO}/pulls/{PR_NUMBER}/files"
-    response = requests.get(url, headers=HEADERS)
-    response.raise_for_status()
-    return response.json()
+    r = requests.get(url, headers=HEADERS)
+    r.raise_for_status()
+    return r.json()
 
-def post_review_comment(message):
+def post_review_comment(body):
     url = f"{GITHUB_API}/repos/{OWNER}/{REPO}/pulls/{PR_NUMBER}/reviews"
     requests.post(
         url,
         headers=HEADERS,
-        json={"body": message, "event": "REQUEST_CHANGES"}
+        json={"body": body, "event": "REQUEST_CHANGES"}
     )
 
 def set_commit_status(state, description):
@@ -54,92 +75,98 @@ def load_readme():
     with open("README.md", "r", encoding="utf-8") as f:
         return f.read()
 
-def index_readme_sections(readme_text):
+def index_readme_sections(text):
     sections = {}
-    current_section = None
-    for line in readme_text.splitlines():
+    current = None
+    for line in text.splitlines():
         if line.startswith("## "):
-            current_section = line.replace("## ", "").strip()
-            sections[current_section] = []
-        elif current_section:
-            sections[current_section].append(line)
+            current = line.replace("## ", "").strip()
+            sections[current] = []
+        elif current:
+            sections[current].append(line)
     return {k: "\n".join(v) for k, v in sections.items()}
 
-# ================== AI INTELLIGENCE ==================
+# ================== AI ==================
 def infer_change_intent(code_diff):
-    prompt = f"""
-You are a senior software architect.
-
-Analyze the following code diff and respond with ONLY ONE
-most relevant documentation section name from this list:
-
-- Users API
-- Pagination
-- Authentication
-- Error Handling
-- Other
-
-Code Diff:
-{code_diff}
-"""
-    response = client.chat.completions.create(
+    prompt = (
+        "Analyze this code diff and return ONLY ONE of:\n"
+        "Users API, Pagination, Authentication, Error Handling, Other\n\n"
+        f"{code_diff}"
+    )
+    r = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         temperature=0
     )
-    return response.choices[0].message.content.strip()
+    return r.choices[0].message.content.strip()
 
 def generate_readme_fix(intent, code_diff):
-    prompt = f"""
-You are an expert technical writer.
-
-Generate a concise README section update for:
-Section: {intent}
-
-Based on this code change:
-{code_diff}
-
-Return ONLY markdown content for that section.
-"""
-    response = client.chat.completions.create(
+    prompt = (
+        f"Write a concise README section for '{intent}' based on this code:\n\n"
+        f"{code_diff}"
+    )
+    r = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         temperature=0
     )
-    return response.choices[0].message.content.strip()
+    return r.choices[0].message.content.strip()
 
 # ================== MAIN ==================
-print("🚀 Starting Docu-Drift Agent (Advanced + Auto-Suggest)")
+print("🚀 Starting Docu-Drift Agent")
 
-pr_files = get_pr_files()
-changed_files = [f["filename"] for f in pr_files]
+files = get_pr_files()
+changed = [f["filename"] for f in files]
 
-print("📂 Changed files:", changed_files)
+print("📂 Changed files:", changed)
 
-code_files = [f for f in pr_files if f["filename"].startswith("routes/")]
-readme_files = [f for f in pr_files if f["filename"] == "README.md"]
+code_files = [f for f in files if f["filename"].startswith("routes/")]
+readme_files = [f for f in files if f["filename"] == "README.md"]
 
-# No code change
 if not code_files:
-    print("✅ No code changes detected")
     set_commit_status("success", "No documentation check required")
     sys.exit(0)
 
 code_diff = "\n".join(f.get("patch", "") for f in code_files)
-
 intent = infer_change_intent(code_diff)
-print("🧠 Detected change intent:", intent)
 
-# README missing
+print("🧠 Intent:", intent)
+
 if not readme_files:
     suggestion = generate_readme_fix(intent, code_diff)
 
-    comment = f"""
-❌ **Documentation Drift Detected**
+    comment = (
+        "❌ **Documentation Drift Detected**\n\n"
+        f"The code change affects **{intent}**, but README.md was not updated.\n\n"
+        "### ✅ Suggested Fix (Apply suggestion)\n\n"
+        "```suggestion\n"
+        f"## {intent}\n{suggestion}\n"
+        "```"
+    )
 
-The code change affects **{intent}**, but `README.md` was not updated.
+    post_review_comment(comment)
+    set_commit_status("failure", "README not updated")
+    sys.exit(1)
 
-### ✅ Suggested Fix (click **Apply suggestion**)
-```suggestion
-## {intent}
-{suggestion}
+readme_patch = readme_files[0].get("patch", "")
+readme_text = load_readme()
+sections = index_readme_sections(readme_text)
+
+if intent not in sections or intent.lower() not in readme_patch.lower():
+    suggestion = generate_readme_fix(intent, code_diff)
+
+    comment = (
+        "❌ **Documentation Drift Detected**\n\n"
+        f"Code change impacts **{intent}**, but documentation is missing or outdated.\n\n"
+        "### ✅ Suggested Fix (Apply suggestion)\n\n"
+        "```suggestion\n"
+        f"## {intent}\n{suggestion}\n"
+        "```"
+    )
+
+    post_review_comment(comment)
+    set_commit_status("failure", "Documentation update required")
+    sys.exit(1)
+
+set_commit_status("success", "Documentation matches code changes")
+print("✅ Documentation validated")
