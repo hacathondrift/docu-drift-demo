@@ -1,2 +1,3 @@
-def get_users():
-    return {"users": []}
+def get_users(limit=1):
+    return {"users": [], "limit": limit}
+[]}
