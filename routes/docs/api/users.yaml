@@ -2,7 +2,7 @@ openapi: 3.0.0
 paths:
   /users:
     get:
-      summary: Get users
+      summary: Get users API   # ← add one word
       parameters:
         - name: limit
           in: query
@@ -10,3 +10,4 @@ paths:
           schema:
             type: integer
           description: Maximum number of users to return
+#
