@@ -1,24 +1,3 @@
-
-### ✅ RIGHT (safe & production-ready)
-
-Use **single-line strings + `\n` joins**  
-or **triple quotes WITHOUT embedded ```**
-
----
-
-## ✅ FULLY FIXED `docu_drift_agent.py` (COPY–PASTE)
-
-This version:
-- ✅ Fixes syntax error
-- ✅ Keeps **Apply suggestion**
-- ✅ Safe for GitHub Actions
-- ✅ Hackathon-ready
-
----
-
-### 🔥 **FINAL WORKING FILE**
-
-```python
 import os
 import sys
 import requests
@@ -68,7 +47,7 @@ def set_commit_status(state, description):
         }
     )
 
-# ================== README HANDLING ==================
+# ================== README ==================
 def load_readme():
     if not os.path.exists("README.md"):
         return ""
@@ -116,9 +95,8 @@ def generate_readme_fix(intent, code_diff):
 print("🚀 Starting Docu-Drift Agent")
 
 files = get_pr_files()
-changed = [f["filename"] for f in files]
-
-print("📂 Changed files:", changed)
+changed_files = [f["filename"] for f in files]
+print("📂 Changed files:", changed_files)
 
 code_files = [f for f in files if f["filename"].startswith("routes/")]
 readme_files = [f for f in files if f["filename"] == "README.md"]
@@ -129,16 +107,15 @@ if not code_files:
 
 code_diff = "\n".join(f.get("patch", "") for f in code_files)
 intent = infer_change_intent(code_diff)
-
-print("🧠 Intent:", intent)
+print("🧠 Detected intent:", intent)
 
 if not readme_files:
     suggestion = generate_readme_fix(intent, code_diff)
 
     comment = (
         "❌ **Documentation Drift Detected**\n\n"
-        f"The code change affects **{intent}**, but README.md was not updated.\n\n"
-        "### ✅ Suggested Fix (Apply suggestion)\n\n"
+        f"Code changes affect **{intent}**, but README.md was not updated.\n\n"
+        "### ✅ Suggested Fix\n\n"
         "```suggestion\n"
         f"## {intent}\n{suggestion}\n"
         "```"
@@ -157,8 +134,8 @@ if intent not in sections or intent.lower() not in readme_patch.lower():
 
     comment = (
         "❌ **Documentation Drift Detected**\n\n"
-        f"Code change impacts **{intent}**, but documentation is missing or outdated.\n\n"
-        "### ✅ Suggested Fix (Apply suggestion)\n\n"
+        f"Code impacts **{intent}**, but README was not updated correctly.\n\n"
+        "### ✅ Suggested Fix\n\n"
         "```suggestion\n"
         f"## {intent}\n{suggestion}\n"
         "```"
@@ -169,4 +146,4 @@ if intent not in sections or intent.lower() not in readme_patch.lower():
     sys.exit(1)
 
 set_commit_status("success", "Documentation matches code changes")
-print("✅ Documentation validated")
+print("✅ Documentation validated successfully")
