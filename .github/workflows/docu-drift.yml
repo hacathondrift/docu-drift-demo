@@ -4,6 +4,12 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+# 🔴 THIS BLOCK IS MANDATORY
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
 jobs:
   docu-drift:
     runs-on: ubuntu-latest
